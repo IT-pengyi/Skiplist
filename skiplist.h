@@ -138,12 +138,12 @@ SkipList<K, V>::~SkipList() {
 
 template<typename K, typename V> 
 int SkipList<K, V>::get_random_level() {
-    int k = 1;
+    int level = 1;
     while (rand() % 2) {
-        ++k;
+        ++level;
     }
-    k = (k < _max_level) ? k : _max_level;
-    return k;
+    level = (level < _max_level) ? level : _max_level;
+    return level;
 }
 
 // 得到跳跃表当前大小
@@ -227,6 +227,60 @@ Node<K, V>* SkipList<K, V>::create_node(const K k, const V v, int level) {
     return node;
 };
 
+/*              
+//                                                          search 66
+
+level 4     *---->1--------------------------------------------->50                                            100                                                    
+//                                                                |                
+level 3           1                      20                      50                        70                  100                                                     
+//                                                                |                                                       
+level 2           1            10        20            40        50 ------->64             70       81         100             
+//                                                                          |                                          
+level 1           1    4       10       20        30   40        50        64 ---->66     70       81         100                             
+//                                                                                  |                    
+level 0  header   1   4   9   10   16   20   25   30    40   49  50   60   64     [66]    70   80   81   90   100       
+
+*/
+
+template<typename K, typename V> 
+bool SkipList<K, V>::search_element(K key) {
+    cout << "search_element-----------" << endl;
+    Node<K, V>* current = _header;
+
+    //
+    for (int i = _skip_list_level; i >= 0; --i) {
+        while (current->forward[i] && current->forward[i]->get_key() < key) {
+            current = current->forward[i];
+        }
+    }
+    //
+    current = current->forward[0];
+
+    if (current && current->get_key() == key) {
+        cout << "Found key: " << key << ", value: " << current->get_value() << endl;
+        return true;
+    }
+
+    cout << "Not Found Key:" << key << endl;
+    return false;
+}
+
+
+/*              
+//                                                          insert 66
+
+level 4     *---->1--------------------------------------------->50                                            100                                                    
+//                                                                |                
+level 3           1                      20                      50                        70                  100                                                     
+//                                                                |                                                       
+level 2           1            10        20            40        50 ------->64    [66]     70       81         100             
+//                                                                          |                                          
+level 1           1    4       10       20        30   40        50        64     [66]     70       81         100                             
+//                                                                          |                    
+level 0  header   1   4   9   10   16   20   25   30    40   49  50   60   64---->[66]     70   80   81   90   100       
+
+*/
+
 template<typename K, typename V> 
 int SkipList<K, V>::insert_element(const K key, const V value) {
     mtx.lock();
@@ -266,12 +320,12 @@ int SkipList<K, V>::insert_element(const K key, const V value) {
         Node<K, V>* insert_node = create_node(key, value, random_level);
 
         //插入节点
-        for (int i = 0; i < random_level + 1; ++i) {
+        for (int i = 0; i < random_level; ++i) {
             insert_node->forward[i] = update[i]->forward[i];
             update[i]->forward[i] = insert_node;
         }
         cout << "Successfully inserted key:" << key << ", value:" << value << endl;
-        _element_count ++;
+        ++_element_count;
 
     }
     mtx.unlock();
@@ -316,29 +370,6 @@ void SkipList<K, V>::delete_element(K key) {
     mtx.unlock();
     return;
 
-}
-
-template<typename K, typename V> 
-bool SkipList<K, V>::search_element(K key) {
-    cout << "search_element-----------" << endl;
-    Node<K, V>* current = _header;
-
-    //
-    for (int i = _skip_list_level; i >= 0; --i) {
-        while (current->forward[i] && current->forward[i]->get_key() < key) {
-            current = current->forward[i];
-        }
-    }
-    //
-    current = current->forward[0];
-
-    if (current && current->get_key() == key) {
-        cout << "Found key: " << key << ", value: " << current->get_value() << endl;
-        return false;
-    }
-
-    cout << "Not Found Key:" << key << endl;
-    return false;
 }
 
 
